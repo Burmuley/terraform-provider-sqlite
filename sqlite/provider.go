@@ -41,7 +41,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	}
 
 	sqlW := NewSqLiteWrapper()
-	sqlW.Open(dbPath)
+	err = sqlW.Open(dbPath)
 
 	if err != nil {
 		diags = append(diags, diag.Diagnostic{

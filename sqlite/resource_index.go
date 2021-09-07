@@ -81,7 +81,9 @@ func resourceIndexCreate(ctx context.Context, d *schema.ResourceData, m interfac
 	}
 
 	d.SetId(index.Name)
-	d.Set("created", time.Now().Format(time.RFC850))
+	if err := d.Set("created", time.Now().Format(time.RFC850)); err != nil {
+	    return diag.FromErr(err)
+    }
 
 	return diag.Diagnostics{}
 }

@@ -36,11 +36,6 @@ var templateFuncMap = template.FuncMap{
 	"toStr":   templateToString,
 }
 
-var tmplIndex map[string]string = map[string]string{
-	"create_table": createTableTemplate,
-	"create_index": createIndexTemplate,
-}
-
 func renderTemplate(t string, data interface{}) (string, error) {
 	tmpl, err := template.New("").Funcs(templateFuncMap).Parse(t)
 	if err != nil {
