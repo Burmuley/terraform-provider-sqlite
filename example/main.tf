@@ -1,5 +1,5 @@
 resource "sqlite_table" "test_table" {
-  name = "users"
+  name = "system users"
 
   column {
     name = "id"
@@ -58,6 +58,26 @@ resource "sqlite_table" "test_table2" {
   column {
     name = "name"
     type = "TEXT"
+    constraints {
+      not_null = true
+    }
+  }
+}
+
+resource "sqlite_table" "test_table3" {
+  name = "imported_table"
+  column {
+    name = "id"
+    type = "INTEGER"
+    constraints {
+      not_null = true
+      primary_key = true
+    }
+  }
+
+  column {
+    name = "field"
+    type = "INTEGER"
     constraints {
       not_null = true
     }

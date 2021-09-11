@@ -2,7 +2,8 @@ package sqlite
 
 import (
 	"bytes"
-	"strconv"
+    "fmt"
+    "strconv"
 	"strings"
 	"text/template"
 )
@@ -34,6 +35,7 @@ var templateFuncMap = template.FuncMap{
 	"strJoin": strings.Join,
 	"mkSlice": templateMkSlice,
 	"toStr":   templateToString,
+	"escapeSql": escapeSQLEntity,
 }
 
 func renderTemplate(t string, data interface{}) (string, error) {
@@ -49,4 +51,13 @@ func renderTemplate(t string, data interface{}) (string, error) {
 	}
 
 	return string(buf.Bytes()), nil
+}
+
+func escapeSQLEntity(s string) string {
+    ns := s
+    if strings.ContainsAny(ns, `" `) {
+        ns = strings.Replace(s, "\"", "\"\"", -1)
+        ns = fmt.Sprintf("\"%s\"", ns)
+    }
+    return ns
 }

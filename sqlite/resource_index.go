@@ -102,6 +102,8 @@ func resourceIndexRead(ctx context.Context, d *schema.ResourceData, m interface{
 	// Resource Id in our case corresponds to table name
 	schemaStmt := fmt.Sprintf("PRAGMA INDEX_INFO(%s);", d.Id())
 	indexStmt := fmt.Sprintf("SELECT name FROM sqlite_master WHERE type='index' AND name='%s';", d.Id())
+    log.Println(indexStmt)
+    log.Println(schemaStmt)
 
 	// check if table exists and get its name
 	res, err := c.QueryRow(indexStmt)
@@ -155,6 +157,7 @@ func resourceIndexRead(ctx context.Context, d *schema.ResourceData, m interface{
 func resourceIndexDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	c := m.(*sqLiteWrapper)
 	query := fmt.Sprintf("DROP INDEX %s;", d.Id())
+    log.Println(query)
 	_, err := c.Exec(query)
 	if err != nil {
 		return diag.FromErr(err)

@@ -1,7 +1,7 @@
 package sqlite
 
 var createTableTemplate = `
-CREATE TABLE {{ .Name }} (
+CREATE TABLE {{ .Name | escapeSql }} (
 {{- $lenColumns := sub (len .Columns) 1 -}}
 {{- range $i, $v := .Columns }}
     {{- $constr_str := "" -}}
@@ -16,7 +16,7 @@ CREATE TABLE {{ .Name }} (
             {{ end -}}
         {{ end -}}
     {{ end }}
-{{ index $v "name" }} {{ index $v "type" }} {{ $constr_str -}}{{- if lt $i $lenColumns -}},{{- end -}}
+{{ index $v "name" | escapeSql }} {{ index $v "type" }} {{ $constr_str -}}{{- if lt $i $lenColumns -}},{{- end -}}
 {{ end }}
 );
 `
@@ -27,5 +27,5 @@ var createIndexTemplate = `
 {{- $cols := strJoin .Columns "," -}}
 {{- $colsStr = strJoin (mkSlice " (" $cols ")") "" -}} 
 {{- end -}}
-CREATE {{if eq (toStr .Unique) "true"}}UNIQUE {{end}}INDEX {{ .Name }} ON {{ .Table }}{{ $colsStr }};
+CREATE {{if eq (toStr .Unique) "true"}}UNIQUE {{end}}INDEX {{ .Name | escapeSql }} ON {{ .Table | escapeSql }}{{ $colsStr }};
 `

@@ -3,7 +3,8 @@ package sqlite
 import (
 	"context"
 	"fmt"
-	"time"
+    "log"
+    "time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -83,6 +84,9 @@ func resourceTable() *schema.Resource {
 		CreateContext: resourceTableCreate,
 		ReadContext:   resourceTableRead,
 		DeleteContext: resourceTableDelete,
+		Importer: &schema.ResourceImporter{
+            StateContext: schema.ImportStatePassthroughContext,
+        },
 		UseJSONNumber: false,
 	}
 }
@@ -117,6 +121,7 @@ func resourceTableCreate(ctx context.Context, d *schema.ResourceData, m interfac
 	if err != nil {
 		return diag.FromErr(err)
 	}
+	log.Println(query)
 
 	_, err = c.Exec(query)
 	if err != nil {
@@ -148,8 +153,10 @@ func resourceTableRead(ctx context.Context, d *schema.ResourceData, m interface{
 	c := m.(*sqLiteWrapper)
 	// SQL statements for getting table information
 	// Resource Id in our case corresponds to table name
-	SchemaStmt := fmt.Sprintf("PRAGMA TABLE_INFO(%s);", d.Id())
+	SchemaStmt := fmt.Sprintf("PRAGMA TABLE_INFO(%s);", escapeSQLEntity(d.Id()))
 	TableStmt := fmt.Sprintf("SELECT name FROM sqlite_master WHERE type='table' AND name='%s';", d.Id())
+    log.Println(TableStmt)
+    log.Println(SchemaStmt)
 
 	// check if table exists and get its name
 	res, err := c.QueryRow(TableStmt)
@@ -224,7 +231,8 @@ func resourceTableRead(ctx context.Context, d *schema.ResourceData, m interface{
 
 func resourceTableDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	c := m.(*sqLiteWrapper)
-	query := fmt.Sprintf("DROP TABLE %s;", d.Id())
+	query := fmt.Sprintf("DROP TABLE %s;", escapeSQLEntity(d.Id()))
+    log.Println(query)
 	_, err := c.Exec(query)
 	if err != nil {
 		return diag.FromErr(err)
