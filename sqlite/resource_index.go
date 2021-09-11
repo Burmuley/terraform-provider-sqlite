@@ -47,6 +47,9 @@ func resourceIndex() *schema.Resource {
 		CreateContext: resourceIndexCreate,
 		ReadContext:   resourceIndexRead,
 		DeleteContext: resourceIndexDelete,
+        Importer: &schema.ResourceImporter{
+            StateContext: schema.ImportStatePassthroughContext,
+        },
 		UseJSONNumber: false,
 	}
 }
