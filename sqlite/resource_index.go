@@ -103,8 +103,8 @@ func resourceIndexRead(ctx context.Context, d *schema.ResourceData, m interface{
 	c := m.(*sqLiteWrapper)
 	// SQL statements for getting table information
 	// Resource Id in our case corresponds to table name
-	schemaStmt := fmt.Sprintf("PRAGMA INDEX_INFO(%s);", d.Id())
-	indexStmt := fmt.Sprintf("SELECT name FROM sqlite_master WHERE type='index' AND name='%s';", d.Id())
+	schemaStmt := fmt.Sprintf("PRAGMA INDEX_INFO(%s);", d.Get("name"))
+	indexStmt := fmt.Sprintf("SELECT name FROM sqlite_master WHERE type='index' AND name='%s';", d.Get("name"))
     log.Println(indexStmt)
     log.Println(schemaStmt)
 

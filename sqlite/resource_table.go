@@ -4,12 +4,24 @@ import (
 	"context"
 	"fmt"
     "log"
+    "reflect"
     "time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+    "github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
+    "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
+
+//func checkColumnChanges(old, new map[string]interface{}) bool {
+//    // check if type has changed
+//    if old["type"].(string) != new["type"].(string) {
+//        return false
+//    }
+//
+//    oldConstr, ok := old["constraints"]
+//
+//}
 
 func resourceTable() *schema.Resource {
 	return &schema.Resource{
@@ -17,7 +29,7 @@ func resourceTable() *schema.Resource {
 			"name": {
 				Type:        schema.TypeString,
 				Required:    true,
-				ForceNew:    true,
+				ForceNew:    false,
 				Description: "SQLite table name.",
 			},
 			"created": {
@@ -26,22 +38,28 @@ func resourceTable() *schema.Resource {
 				Optional:    true,
 				Description: "Table creation timestamp.",
 			},
+            "last_updated": {
+                Type:        schema.TypeString,
+                Computed:    true,
+                Optional:    true,
+                Description: "Table lastr updated timestamp.",
+            },
 			"column": {
 				Type:     schema.TypeList,
 				Required: true,
-				ForceNew: true,
+				ForceNew: false,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
 							Type:        schema.TypeString,
 							Required:    true,
-							ForceNew:    true,
+							ForceNew:    false,
 							Description: "Column name.",
 						},
 						"type": {
 							Type:        schema.TypeString,
 							Required:    true,
-							ForceNew:    true,
+							ForceNew:    false,
 							Description: "Column data type.",
 							ValidateFunc: validation.StringInSlice([]string{
 								"INTEGER", "TEXT", "BLOB", "REAL", "NUMERIC",
@@ -51,26 +69,26 @@ func resourceTable() *schema.Resource {
 							Type:        schema.TypeList,
 							MaxItems:    1,
 							Optional:    true,
-							ForceNew:    true,
+							ForceNew:    false,
 							Description: "The list of column constraints.",
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"primary_key": {
 										Type:     schema.TypeBool,
 										Optional: true,
-										ForceNew: true,
+										ForceNew: false,
 										Default:  false,
 									},
 									"not_null": {
 										Type:     schema.TypeBool,
 										Optional: true,
-										ForceNew: true,
+										ForceNew: false,
 										Default:  false,
 									},
 									"default": {
 										Type:     schema.TypeString,
 										Optional: true,
-										ForceNew: true,
+										ForceNew: false,
 										Default:  nil,
 									},
 								},
@@ -84,6 +102,27 @@ func resourceTable() *schema.Resource {
 		CreateContext: resourceTableCreate,
 		ReadContext:   resourceTableRead,
 		DeleteContext: resourceTableDelete,
+		UpdateContext: resourceTableUpdate,
+		CustomizeDiff: customdiff.All(
+		    customdiff.ForceNewIfChange("column", func(ctx context.Context, old, new, meta interface{}) bool {
+                // always check all old columns, if Type or Constraints changed -> return true
+		        // check if column was deleted (len(new)<len(old))
+		        oldColumns := old.([]interface{})
+		        newColumns := new.([]interface{})
+
+		        // check if old columns didn't change sensitive fields
+		        // like `type` and `constraints`
+		        if len(newColumns) >= len(oldColumns) {
+                    for i := range oldColumns {
+                        if !reflect.DeepEqual(oldColumns[i], newColumns[i]) {
+                            return true
+                        }
+                    }
+                }
+
+                return false
+            }),
+        ),
 		Importer: &schema.ResourceImporter{
             StateContext: schema.ImportStatePassthroughContext,
         },
@@ -133,7 +172,7 @@ func resourceTableCreate(ctx context.Context, d *schema.ResourceData, m interfac
 		return diag.FromErr(fmt.Errorf("set created: %w", err))
 	}
 
-	return diag.Diagnostics{}
+	return resourceTableRead(ctx, d, m)
 }
 
 func resourceTableRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
@@ -152,9 +191,9 @@ func resourceTableRead(ctx context.Context, d *schema.ResourceData, m interface{
 
 	c := m.(*sqLiteWrapper)
 	// SQL statements for getting table information
-	// Resource Id in our case corresponds to table name
-	SchemaStmt := fmt.Sprintf("PRAGMA TABLE_INFO(%s);", escapeSQLEntity(d.Id()))
-	TableStmt := fmt.Sprintf("SELECT name FROM sqlite_master WHERE type='table' AND name='%s';", d.Id())
+	// Resource Id in our case correspons to table name
+    SchemaStmt := fmt.Sprintf("PRAGMA TABLE_INFO(%s);", escapeSQLEntity(d.Id()))
+    TableStmt := fmt.Sprintf("SELECT name FROM sqlite_master WHERE type='table' AND name='%s';", d.Id())
     log.Println(TableStmt)
     log.Println(SchemaStmt)
 
@@ -242,4 +281,35 @@ func resourceTableDelete(ctx context.Context, d *schema.ResourceData, m interfac
 	d.SetId("")
 
 	return diag.Diagnostics{}
+}
+
+func resourceTableUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+    c := m.(*sqLiteWrapper)
+    queries := make([]string, 0)
+
+    if d.HasChange("name") {
+        oldName, newName := d.GetChange("name")
+        tableRenameQuery := fmt.Sprintf("ALTER TABLE '%s' RENAME TO '%s';", oldName, newName)
+        log.Println(tableRenameQuery)
+        queries = append(queries, tableRenameQuery)
+    }
+
+    //if d.HasChange("column") {
+    //    // something to do with columns
+    //}
+
+
+    for _, query := range queries {
+        _, err := c.Exec(query)
+        if err != nil {
+            return diag.FromErr(err)
+        }
+    }
+
+    if len(queries) > 0 {
+        d.Set("last_updated", time.Now().Format(time.RFC850))
+        d.SetId(d.Get("name").(string))
+    }
+
+    return resourceTableRead(ctx, d, m)
 }

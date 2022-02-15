@@ -65,7 +65,7 @@ resource "sqlite_table" "test_table2" {
 }
 
 resource "sqlite_table" "test_table3" {
-  name = "imported_table"
+  name = "imported_table2"
   column {
     name = "id"
     type = "INTEGER"
@@ -77,6 +77,14 @@ resource "sqlite_table" "test_table3" {
 
   column {
     name = "field"
+    type = "INTEGER"
+    constraints {
+      not_null = true
+    }
+  }
+
+  column {
+    name = "field2"
     type = "INTEGER"
     constraints {
       not_null = true
